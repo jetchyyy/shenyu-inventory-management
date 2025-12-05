@@ -8,6 +8,8 @@ import Navigation from './components/layout/Navigation';
 import Dashboard from './components/dashboard/Dashboard';
 import Inventory from './components/inventory/Inventory';
 import Sales from './components/sales/Sales';
+import CreditItems from './components/credits/CreditItems';
+import ProfitAnalytics from './components/profit/ProfitAnalytics';
 import UserManagement from './components/users/UserManagement';
 
 const App = () => {
@@ -98,6 +100,8 @@ const App = () => {
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'inventory' && <Inventory />}
         {activeTab === 'sales' && <Sales />}
+        {activeTab === 'credits' && <CreditItems />}
+        {activeTab === 'profit' && <ProfitAnalytics />}
         {activeTab === 'users' && userRole === 'superadmin' && <UserManagement />}
       </main>
     </div>

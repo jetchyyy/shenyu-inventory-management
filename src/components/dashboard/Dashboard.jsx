@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../../config/firebase';
 import StatCard from './StatCard';
-import { Package, ShoppingCart, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Package, ShoppingCart, AlertTriangle, TrendingUp, Zap } from 'lucide-react';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -10,6 +10,10 @@ const Dashboard = () => {
     lowStock: 0,
     totalSales: 0,
     todaySales: 0,
+    salesProfit: 0,
+    todaySalesProfit: 0,
+    loanProfit: 0,
+    todayLoanProfit: 0,
     totalProfit: 0,
     todayProfit: 0
   });
@@ -18,6 +22,8 @@ const Dashboard = () => {
   useEffect(() => {
     const inventoryRef = ref(database, 'inventory');
     const salesRef = ref(database, 'sales');
+    const creditItemsRef = ref(database, 'creditItems');
+    const creditPaymentsRef = ref(database, 'creditItemPayments');
 
     const unsubInventory = onValue(inventoryRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -52,12 +58,17 @@ const Dashboard = () => {
           new Date(sale.timestamp).toDateString() === today
         );
 
+        const salesProfit = sales.reduce((sum, sale) => sum + (sale.totalProfit || 0), 0);
+        const todaySalesProfit = todaySales.reduce((sum, sale) => sum + (sale.totalProfit || 0), 0);
+
         setStats(prev => ({
           ...prev,
           totalSales: sales.reduce((sum, sale) => sum + sale.total, 0),
           todaySales: todaySales.reduce((sum, sale) => sum + sale.total, 0),
-          totalProfit: sales.reduce((sum, sale) => sum + (sale.totalProfit || 0), 0),
-          todayProfit: todaySales.reduce((sum, sale) => sum + (sale.totalProfit || 0), 0)
+          salesProfit: salesProfit,
+          todaySalesProfit: todaySalesProfit,
+          totalProfit: salesProfit + prev.loanProfit,
+          todayProfit: todaySalesProfit + prev.todayLoanProfit
         }));
 
         setRecentSales(sales.slice(0, 5));
@@ -66,16 +77,62 @@ const Dashboard = () => {
           ...prev,
           totalSales: 0,
           todaySales: 0,
-          totalProfit: 0,
-          todayProfit: 0
+          salesProfit: 0,
+          todaySalesProfit: 0,
+          totalProfit: prev.loanProfit,
+          todayProfit: prev.todayLoanProfit
         }));
         setRecentSales([]);
+      }
+    });
+
+    const unsubCreditItems = onValue(creditItemsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const creditData = snapshot.val();
+        const creditItems = Object.keys(creditData).map(key => ({
+          id: key,
+          ...creditData[key]
+        }));
+
+        const today = new Date().toDateString();
+        
+        // Calculate loan profit from completed credits only
+        let totalLoanProfit = 0;
+        let todayLoanProfit = 0;
+
+        creditItems.forEach(item => {
+          if (item.status === 'completed' && item.interestAmount) {
+            totalLoanProfit += item.interestAmount;
+            
+            // Check if completed today
+            if (item.lastPaymentDate && new Date(item.lastPaymentDate).toDateString() === today) {
+              todayLoanProfit += item.interestAmount;
+            }
+          }
+        });
+
+        setStats(prev => ({
+          ...prev,
+          loanProfit: totalLoanProfit,
+          todayLoanProfit: todayLoanProfit,
+          totalProfit: prev.salesProfit + totalLoanProfit,
+          todayProfit: prev.todaySalesProfit + todayLoanProfit
+        }));
+      } else {
+        setStats(prev => ({
+          ...prev,
+          loanProfit: 0,
+          todayLoanProfit: 0,
+          totalProfit: prev.salesProfit,
+          todayProfit: prev.todaySalesProfit
+        }));
       }
     });
 
     return () => {
       unsubInventory();
       unsubSales();
+      unsubCreditItems();
     };
   }, []);
 
@@ -121,6 +178,43 @@ const Dashboard = () => {
           <h3 className="text-sm md:text-lg font-semibold mb-2">Today's Profit</h3>
           <p className="text-2xl md:text-3xl font-bold">₱{stats.todayProfit.toFixed(2)}</p>
           <p className="text-blue-100 text-xs md:text-sm mt-2">Today's earnings</p>
+        </div>
+      </div>
+
+      {/* Profit Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        <div className="bg-white rounded-lg shadow p-4 md:p-6 border-l-4 border-emerald-500">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm md:text-base font-semibold text-gray-800">Sales Profit</h3>
+            <ShoppingCart className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between items-baseline">
+              <p className="text-xs md:text-sm text-gray-600">All-time</p>
+              <p className="text-lg md:text-2xl font-bold text-emerald-600">₱{stats.salesProfit.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between items-baseline pt-2 border-t border-gray-200">
+              <p className="text-xs md:text-sm text-gray-600">Today</p>
+              <p className="text-base md:text-lg font-semibold text-emerald-600">₱{stats.todaySalesProfit.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-4 md:p-6 border-l-4 border-amber-500">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm md:text-base font-semibold text-gray-800">Loan Profit (Interest)</h3>
+            <Zap className="w-5 h-5 text-amber-600" />
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between items-baseline">
+              <p className="text-xs md:text-sm text-gray-600">All-time</p>
+              <p className="text-lg md:text-2xl font-bold text-amber-600">₱{stats.loanProfit.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between items-baseline pt-2 border-t border-gray-200">
+              <p className="text-xs md:text-sm text-gray-600">Today</p>
+              <p className="text-base md:text-lg font-semibold text-amber-600">₱{stats.todayLoanProfit.toFixed(2)}</p>
+            </div>
+          </div>
         </div>
       </div>
 

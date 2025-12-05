@@ -6,6 +6,7 @@ import InventoryTable from './InventoryTable';
 import ProductModal from './ProductModal';
 import StockInModal from './StockInModal';
 import SuccessModal from '../shared/SuccessModal';
+import Pagination from '../shared/Pagination';
 import { Plus, Search, Lock } from 'lucide-react';
 
 const Inventory = () => {
@@ -13,6 +14,8 @@ const Inventory = () => {
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [showModal, setShowModal] = useState(false);
   const [showStockInModal, setShowStockInModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -52,6 +55,7 @@ const Inventory = () => {
       item.sku.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredItems(filtered);
+    setCurrentPage(1);
   }, [searchTerm, items]);
 
   const handleSave = async (productData) => {
@@ -207,6 +211,15 @@ const Inventory = () => {
     }
   };
 
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -259,13 +272,20 @@ const Inventory = () => {
         </div>
 
         <InventoryTable
-          items={filteredItems}
+          items={paginatedItems}
           onEdit={handleEdit}
           onDelete={handleDelete}
           onStockIn={handleStockIn}
           canEdit={canEdit}
         />
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalItems={filteredItems.length}
+        itemsPerPage={itemsPerPage}
+        onPageChange={handlePageChange}
+      />
 
       <ProductModal
         isOpen={showModal}
