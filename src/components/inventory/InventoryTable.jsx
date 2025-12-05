@@ -1,7 +1,7 @@
 import React from 'react';
-import { Edit2, Trash2, Lock } from 'lucide-react';
+import { Edit2, Trash2, Lock, Plus } from 'lucide-react';
 
-const InventoryTable = ({ items, onEdit, onDelete, canEdit = true }) => {
+const InventoryTable = ({ items, onEdit, onDelete, onStockIn, canEdit = true }) => {
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
@@ -110,6 +110,13 @@ const InventoryTable = ({ items, onEdit, onDelete, canEdit = true }) => {
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 <div className="flex space-x-2">
+                  <button
+                    onClick={() => onStockIn(item)}
+                    className="text-green-600 hover:text-green-800 transition"
+                    title="Stock In"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
                   {canEdit ? (
                     <>
                       <button

@@ -1,0 +1,127 @@
+import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
+
+const StockInModal = ({ isOpen, onClose, onSave, item }) => {
+  const [quantity, setQuantity] = useState(0);
+  const [notes, setNotes] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setQuantity(0);
+      setNotes('');
+      setError('');
+    }
+  }, [isOpen]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!quantity || quantity <= 0) {
+      setError('Quantity must be greater than zero');
+      return;
+    }
+
+    onSave({
+      quantity: parseInt(quantity),
+      notes: notes.trim(),
+      timestamp: Date.now()
+    });
+
+    setQuantity(0);
+    setNotes('');
+  };
+
+  if (!isOpen || !item) return null;
+
+  const totalCost = (item.costPrice || 0) * quantity;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Stock In</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 transition"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+          <p className="text-sm text-gray-600">Product</p>
+          <p className="text-lg font-semibold text-gray-800">{item.name}</p>
+          <p className="text-sm text-gray-500">SKU: {item.sku}</p>
+          <div className="mt-3 pt-3 border-t border-blue-200 space-y-1">
+            <p className="text-sm text-gray-600">Current Quantity: <span className="font-semibold text-gray-800">{item.quantity}</span></p>
+            <p className="text-sm text-gray-600">Cost Price: <span className="font-semibold text-gray-800">₱{(item.costPrice || 0).toFixed(2)}</span></p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Quantity to Add
+            </label>
+            <input
+              type="number"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              min="1"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Enter quantity"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Total Cost for This Stock In
+            </label>
+            <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+              <p className="text-lg font-semibold text-green-600">₱{totalCost.toFixed(2)}</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Notes (Optional)
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              rows="3"
+              placeholder="Add any notes about this stock in..."
+            />
+          </div>
+
+          <div className="flex space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-medium"
+            >
+              Complete Stock In
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default StockInModal;
