@@ -31,12 +31,27 @@ const SalesHistory = ({ sales }) => {
               <div className="flex-1">
                 <div className="flex items-center space-x-4">
                   <div>
-                    <p className="font-medium text-gray-800">
-                      {new Date(sale.timestamp).toLocaleDateString()} - {new Date(sale.timestamp).toLocaleTimeString()}
-                    </p>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <p className="font-medium text-gray-800">
+                        {new Date(sale.timestamp).toLocaleDateString()} - {new Date(sale.timestamp).toLocaleTimeString()}
+                      </p>
+                      {sale.saleType === 'custom' && (
+                        <span className="text-xs font-semibold bg-green-100 text-green-800 px-2 py-1 rounded">CUSTOM</span>
+                      )}
+                      {sale.customerType && (
+                        <span className={`text-xs font-semibold px-2 py-1 rounded ${sale.customerType === 'reseller' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                          {sale.customerType === 'reseller' ? 'RESELLER' : 'RETAIL'}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600">
                       {sale.items.length} item{sale.items.length > 1 ? 's' : ''}
                     </p>
+                    {sale.customerName && (
+                      <p className="text-sm text-gray-600">
+                        Customer: {sale.customerName}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -68,11 +83,12 @@ const SalesHistory = ({ sales }) => {
                         <p className="font-medium text-gray-800">{item.name}</p>
                         <p className="text-sm text-gray-600">SKU: {item.sku}</p>
                         <p className="text-sm text-gray-600">
-                          {item.quantity} x ₱{(item.retailPrice || item.price || 0).toFixed(2)}
+                          {item.quantity} x ₱{(item.customPrice || item.salePrice || item.retailPrice || item.price || 0).toFixed(2)}
                         </p>
                         {item.profit && (
                           <p className="text-xs text-green-600">
                             Profit: ₱{item.profit.toFixed(2)}
+                            {item.profitMargin && <span> ({item.profitMargin}%)</span>}
                           </p>
                         )}
                       </div>

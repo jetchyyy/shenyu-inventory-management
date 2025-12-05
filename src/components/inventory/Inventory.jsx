@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { ref, onValue, push, set, remove } from 'firebase/database';
 import { database } from '../../config/firebase';
+import { useAuth } from '../../hooks/useAuth';
 import InventoryTable from './InventoryTable';
 import ProductModal from './ProductModal';
-import { Plus, Search } from 'lucide-react';
+import SuccessModal from '../shared/SuccessModal';
+import { Plus, Search, Lock } from 'lucide-react';
 
 const Inventory = () => {
+  const { userRole } = useAuth();
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [successModal, setSuccessModal] = useState({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
+
+  const canEdit = userRole === 'superadmin' || userRole === 'admin';
 
   useEffect(() => {
     const inventoryRef = ref(database, 'inventory');
@@ -50,11 +60,20 @@ const Inventory = () => {
           ...productData,
           updatedAt: Date.now()
         });
+        setSuccessModal({
+          isOpen: true,
+          title: 'Product Updated',
+          message: 'The product has been successfully updated.'
+        });
       } else {
         // Check if SKU already exists
         const existingSku = items.find(item => item.sku === productData.sku);
         if (existingSku) {
-          alert('SKU already exists!');
+          setSuccessModal({
+            isOpen: true,
+            title: 'SKU Already Exists',
+            message: 'This SKU is already in use. Please use a different SKU.'
+          });
           setLoading(false);
           return;
         }
@@ -66,30 +85,68 @@ const Inventory = () => {
           createdAt: Date.now(),
           updatedAt: Date.now()
         });
+        setSuccessModal({
+          isOpen: true,
+          title: 'Product Added',
+          message: 'The new product has been successfully added to inventory.'
+        });
       }
 
       setShowModal(false);
       setEditingItem(null);
     } catch (error) {
       console.error('Error saving product:', error);
-      alert('Failed to save product. Please try again.');
+      setSuccessModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to save product. Please try again.',
+        autoClose: false
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleEdit = (item) => {
+    if (!canEdit) {
+      setSuccessModal({
+        isOpen: true,
+        title: 'Access Denied',
+        message: 'Only Superadmin or Admin users can edit inventory items.',
+        autoClose: false
+      });
+      return;
+    }
     setEditingItem(item);
     setShowModal(true);
   };
 
   const handleDelete = async (id) => {
+    if (!canEdit) {
+      setSuccessModal({
+        isOpen: true,
+        title: 'Access Denied',
+        message: 'Only Superadmin or Admin users can delete inventory items.',
+        autoClose: false
+      });
+      return;
+    }
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
         await remove(ref(database, `inventory/${id}`));
+        setSuccessModal({
+          isOpen: true,
+          title: 'Product Deleted',
+          message: 'The product has been successfully deleted from inventory.'
+        });
       } catch (error) {
         console.error('Error deleting product:', error);
-        alert('Failed to delete product. Please try again.');
+        setSuccessModal({
+          isOpen: true,
+          title: 'Error',
+          message: 'Failed to delete product. Please try again.',
+          autoClose: false
+        });
       }
     }
   };
@@ -98,16 +155,23 @@ const Inventory = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Inventory Management</h1>
-        <button
-          onClick={() => {
-            setEditingItem(null);
-            setShowModal(true);
-          }}
-          className="flex items-center space-x-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add Product</span>
-        </button>
+        {canEdit ? (
+          <button
+            onClick={() => {
+              setEditingItem(null);
+              setShowModal(true);
+            }}
+            className="flex items-center space-x-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Add Product</span>
+          </button>
+        ) : (
+          <div className="flex items-center space-x-2 bg-gray-300 text-gray-600 px-4 py-2 rounded-lg cursor-not-allowed" title="Only Admin or Superadmin can add products">
+            <Lock className="w-5 h-5" />
+            <span>Add Product</span>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow">
@@ -128,6 +192,7 @@ const Inventory = () => {
           items={filteredItems}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          canEdit={canEdit}
         />
       </div>
 
@@ -139,6 +204,14 @@ const Inventory = () => {
         }}
         onSave={handleSave}
         editingItem={editingItem}
+      />
+
+      <SuccessModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ ...successModal, isOpen: false })}
+        title={successModal.title}
+        message={successModal.message}
+        autoClose={successModal.autoClose !== false}
       />
     </div>
   );

@@ -4,12 +4,18 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { database, auth } from '../../config/firebase';
 import UserTable from './UserTable';
 import CreateUserModal from './CreateUserModal';
+import SuccessModal from '../shared/SuccessModal';
 import { UserPlus } from 'lucide-react';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [successModal, setSuccessModal] = useState({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
 
   useEffect(() => {
     const usersRef = ref(database, 'users');
@@ -48,14 +54,23 @@ const UserManagement = () => {
       });
 
       setShowModal(false);
-      alert('User created successfully!');
+      setSuccessModal({
+        isOpen: true,
+        title: 'User Created',
+        message: `User ${userData.email} has been successfully created.`
+      });
     } catch (error) {
       console.error('Error creating user:', error);
+      let errorMessage = 'Failed to create user. Please try again.';
       if (error.code === 'auth/email-already-in-use') {
-        alert('This email is already in use');
-      } else {
-        alert('Failed to create user. Please try again.');
+        errorMessage = 'This email is already in use. Please use a different email.';
       }
+      setSuccessModal({
+        isOpen: true,
+        title: 'Error',
+        message: errorMessage,
+        autoClose: false
+      });
     } finally {
       setLoading(false);
     }
@@ -65,10 +80,19 @@ const UserManagement = () => {
     if (window.confirm(`Are you sure you want to delete user: ${userEmail}?`)) {
       try {
         await remove(ref(database, `users/${userId}`));
-        alert('User deleted successfully! Note: The user\'s authentication account still exists in Firebase Auth.');
+        setSuccessModal({
+          isOpen: true,
+          title: 'User Deleted',
+          message: `User ${userEmail} has been successfully deleted. Note: The user's authentication account still exists in Firebase Auth.`
+        });
       } catch (error) {
         console.error('Error deleting user:', error);
-        alert('Failed to delete user. Please try again.');
+        setSuccessModal({
+          isOpen: true,
+          title: 'Error',
+          message: 'Failed to delete user. Please try again.',
+          autoClose: false
+        });
       }
     }
   };
@@ -105,6 +129,14 @@ const UserManagement = () => {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onCreate={handleCreateUser}
+      />
+
+      <SuccessModal
+        isOpen={successModal.isOpen}
+        onClose={() => setSuccessModal({ ...successModal, isOpen: false })}
+        title={successModal.title}
+        message={successModal.message}
+        autoClose={successModal.autoClose !== false}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, Lock } from 'lucide-react';
 
-const InventoryTable = ({ items, onEdit, onDelete }) => {
+const InventoryTable = ({ items, onEdit, onDelete, canEdit = true }) => {
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
@@ -29,6 +29,9 @@ const InventoryTable = ({ items, onEdit, onDelete }) => {
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Retail Price
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Reseller Price
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Custom Sale Price
@@ -66,6 +69,13 @@ const InventoryTable = ({ items, onEdit, onDelete }) => {
                 ₱{item.retailPrice ? item.retailPrice.toFixed(2) : '0.00'}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {item.resellerPrice > 0 ? (
+                  <span className="font-semibold text-purple-600">₱{item.resellerPrice.toFixed(2)}</span>
+                ) : (
+                  <span className="text-gray-400">—</span>
+                )}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {item.customSalePrice > 0 ? (
                   <span className="font-semibold text-blue-600">₱{item.customSalePrice.toFixed(2)}</span>
                 ) : (
@@ -100,18 +110,29 @@ const InventoryTable = ({ items, onEdit, onDelete }) => {
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 <div className="flex space-x-2">
-                  <button
-                    onClick={() => onEdit(item)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => onDelete(item.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {canEdit ? (
+                    <>
+                      <button
+                        onClick={() => onEdit(item)}
+                        className="text-blue-600 hover:text-blue-800 transition"
+                        title="Edit product"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onDelete(item.id)}
+                        className="text-red-600 hover:text-red-800 transition"
+                        title="Delete product"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex items-center space-x-1 text-gray-400 cursor-not-allowed" title="Only Admin or Superadmin can edit">
+                      <Lock className="w-4 h-4" />
+                      <span className="text-xs">Locked</span>
+                    </div>
+                  )}
                 </div>
               </td>
             </tr>

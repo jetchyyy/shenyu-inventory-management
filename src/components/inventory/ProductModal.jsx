@@ -8,6 +8,7 @@ const ProductModal = ({ isOpen, onClose, onSave, editingItem }) => {
     quantity: 0,
     costPrice: 0,
     retailPrice: 0,
+    resellerPrice: 0,
     customSalePrice: 0,
     minStock: 10
   });
@@ -21,6 +22,7 @@ const ProductModal = ({ isOpen, onClose, onSave, editingItem }) => {
         quantity: editingItem.quantity || 0,
         costPrice: editingItem.costPrice || 0,
         retailPrice: editingItem.retailPrice || 0,
+        resellerPrice: editingItem.resellerPrice || 0,
         customSalePrice: editingItem.customSalePrice || 0,
         minStock: editingItem.minStock || 10
       });
@@ -31,6 +33,7 @@ const ProductModal = ({ isOpen, onClose, onSave, editingItem }) => {
         quantity: 0,
         costPrice: 0,
         retailPrice: 0,
+        resellerPrice: 0,
         customSalePrice: 0,
         minStock: 10
       });
@@ -62,6 +65,10 @@ const ProductModal = ({ isOpen, onClose, onSave, editingItem }) => {
       setError('Retail price must be greater than zero');
       return;
     }
+    if (formData.resellerPrice < 0) {
+      setError('Reseller price cannot be negative');
+      return;
+    }
     if (formData.customSalePrice < 0) {
       setError('Custom sale price cannot be negative');
       return;
@@ -76,6 +83,7 @@ const ProductModal = ({ isOpen, onClose, onSave, editingItem }) => {
       quantity: parseInt(formData.quantity),
       costPrice: parseFloat(formData.costPrice),
       retailPrice: parseFloat(formData.retailPrice),
+      resellerPrice: parseFloat(formData.resellerPrice),
       customSalePrice: parseFloat(formData.customSalePrice),
       minStock: parseInt(formData.minStock)
     });
@@ -172,6 +180,21 @@ const ProductModal = ({ isOpen, onClose, onSave, editingItem }) => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               min="0"
               placeholder="Standard selling price"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Reseller Price (₱)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.resellerPrice}
+              onChange={(e) => setFormData({ ...formData, resellerPrice: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              min="0"
+              placeholder="Special price for resellers (optional)"
             />
           </div>
 

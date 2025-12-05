@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { ref, onValue, get, set, push } from 'firebase/database';
 import { database, auth } from '../../config/firebase';
+import { useAuth } from '../../hooks/useAuth';
 import SuccessModal from '../shared/SuccessModal';
-import { Plus, Trash2, ShoppingCart } from 'lucide-react';
+import { Plus, Trash2, DollarSign, AlertCircle } from 'lucide-react';
 
-const SalesForm = ({ onSaleComplete }) => {
+const CustomSalesForm = ({ onSaleComplete }) => {
+  const { userRole } = useAuth();
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const [customerType, setCustomerType] = useState('retail');
-  const [useSalePrice, setUseSalePrice] = useState(false);
+  const [customPrice, setCustomPrice] = useState('');
+  const [customerName, setCustomerName] = useState('');
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [successModal, setSuccessModal] = useState({
@@ -18,6 +20,9 @@ const SalesForm = ({ onSaleComplete }) => {
     title: '',
     message: ''
   });
+
+  const isStaff = userRole === 'staff';
+  const isSuperAdmin = userRole === 'superadmin';
 
   useEffect(() => {
     const inventoryRef = ref(database, 'inventory');
@@ -45,6 +50,11 @@ const SalesForm = ({ onSaleComplete }) => {
       return;
     }
 
+    if (!customPrice || parseFloat(customPrice) <= 0) {
+      setError('Please enter a selling price greater than zero');
+      return;
+    }
+
     const product = products.find(p => p.id === selectedProduct);
     if (!product) {
       setError('Product not found');
@@ -64,24 +74,11 @@ const SalesForm = ({ onSaleComplete }) => {
       return;
     }
 
-    // Determine selling price based on customer type and custom sale price
-    let sellingPrice;
-    let priceSource = '';
-    
-    if (useSalePrice && product.customSalePrice > 0) {
-      sellingPrice = product.customSalePrice;
-      priceSource = 'custom';
-    } else if (customerType === 'reseller' && product.resellerPrice > 0) {
-      sellingPrice = product.resellerPrice;
-      priceSource = 'reseller';
-    } else {
-      sellingPrice = product.retailPrice;
-      priceSource = 'retail';
-    }
-    
+    const sellingPrice = parseFloat(customPrice);
     const quantityInt = parseInt(quantity);
     const subtotal = quantityInt * sellingPrice;
     const profit = (sellingPrice - product.costPrice) * quantityInt;
+    const profitMargin = ((profit / subtotal) * 100).toFixed(2);
 
     if (cartItem) {
       setCart(cart.map(item =>
@@ -89,12 +86,10 @@ const SalesForm = ({ onSaleComplete }) => {
           ? { 
               ...item, 
               quantity: totalQuantity, 
+              customPrice: sellingPrice,
               subtotal: totalQuantity * sellingPrice,
               profit: (sellingPrice - product.costPrice) * totalQuantity,
-              salePrice: sellingPrice,
-              customerType: customerType,
-              priceSource: priceSource,
-              usedCustomPrice: useSalePrice && product.customSalePrice > 0
+              profitMargin: (((sellingPrice - product.costPrice) * totalQuantity) / (totalQuantity * sellingPrice) * 100).toFixed(2)
             }
           : item
       ));
@@ -106,20 +101,18 @@ const SalesForm = ({ onSaleComplete }) => {
         costPrice: product.costPrice,
         retailPrice: product.retailPrice,
         resellerPrice: product.resellerPrice || 0,
-        customSalePrice: product.customSalePrice || 0,
-        salePrice: sellingPrice,
+        customPrice: sellingPrice,
         quantity: quantityInt,
         subtotal: subtotal,
         profit: profit,
-        customerType: customerType,
-        priceSource: priceSource,
-        usedCustomPrice: useSalePrice && product.customSalePrice > 0
+        profitMargin: profitMargin,
+        isCustomSale: true
       }]);
     }
 
     setSelectedProduct('');
+    setCustomPrice('');
     setQuantity(1);
-    setUseSalePrice(false);
   };
 
   const handleRemoveFromCart = (productId) => {
@@ -137,6 +130,11 @@ const SalesForm = ({ onSaleComplete }) => {
   const handleCheckout = async () => {
     if (cart.length === 0) {
       setError('Cart is empty');
+      return;
+    }
+
+    if (!customerName.trim()) {
+      setError('Please enter customer name or identifier');
       return;
     }
 
@@ -159,37 +157,68 @@ const SalesForm = ({ onSaleComplete }) => {
         }
       }
 
-      // Create sale record
-      const saleRef = push(ref(database, 'sales'));
-      await set(saleRef, {
-        items: cart,
-        total: calculateTotal(),
-        totalProfit: calculateTotalProfit(),
-        customerType: customerType,
-        soldBy: auth.currentUser.uid,
-        timestamp: Date.now()
-      });
+      const total = calculateTotal();
+      const profit = calculateTotalProfit();
 
-      // Update inventory
-      for (const item of cart) {
-        const productRef = ref(database, `inventory/${item.productId}`);
-        const snapshot = await get(productRef);
-        const currentQuantity = snapshot.val().quantity;
-        
-        await set(productRef, {
-          ...snapshot.val(),
-          quantity: currentQuantity - item.quantity,
-          updatedAt: Date.now()
+      // If staff, create pending approval record in separate "pendingApprovals" node
+      if (isStaff) {
+        const approvalRef = push(ref(database, 'pendingApprovals'));
+        await set(approvalRef, {
+          items: cart,
+          total: total,
+          totalProfit: profit,
+          customerName: customerName,
+          saleType: 'custom',
+          requestedBy: auth.currentUser.uid,
+          status: 'pending',
+          createdAt: Date.now(),
+          approvalId: approvalRef.key
+        });
+
+        setCart([]);
+        setCustomerName('');
+        setSuccessModal({
+          isOpen: true,
+          title: 'Sale Submitted for Approval',
+          message: `Custom sale for ${customerName} (₱${total.toFixed(2)}) has been submitted to superadmin for approval.`,
+          autoClose: false
+        });
+      } else {
+        // If superadmin or admin, create sale immediately (no approval needed)
+        const saleRef = push(ref(database, 'sales'));
+        await set(saleRef, {
+          items: cart,
+          total: total,
+          totalProfit: profit,
+          customerName: customerName,
+          saleType: 'custom',
+          status: 'approved',
+          soldBy: auth.currentUser.uid,
+          timestamp: Date.now()
+        });
+
+        // Update inventory immediately
+        for (const item of cart) {
+          const productRef = ref(database, `inventory/${item.productId}`);
+          const snapshot = await get(productRef);
+          const currentQuantity = snapshot.val().quantity;
+          
+          await set(productRef, {
+            ...snapshot.val(),
+            quantity: currentQuantity - item.quantity,
+            updatedAt: Date.now()
+          });
+        }
+
+        setCart([]);
+        setCustomerName('');
+        setSuccessModal({
+          isOpen: true,
+          title: 'Custom Sale Completed',
+          message: `Sale to ${customerName} completed! Total: ₱${total.toFixed(2)} | Profit: ₱${profit.toFixed(2)} | Margin: ${((profit / total) * 100).toFixed(2)}%`
         });
       }
 
-      // Clear cart and show success modal
-      setCart([]);
-      setSuccessModal({
-        isOpen: true,
-        title: 'Sale Completed',
-        message: `Sale completed successfully! Total: ₱${calculateTotal().toFixed(2)} | Profit: ₱${calculateTotalProfit().toFixed(2)}`
-      });
       if (onSaleComplete) onSaleComplete();
     } catch (error) {
       console.error('Error processing sale:', error);
@@ -201,7 +230,20 @@ const SalesForm = ({ onSaleComplete }) => {
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-bold text-gray-800 mb-6">New Sale</h2>
+      <div className="flex items-center space-x-2 mb-6">
+        <DollarSign className="w-6 h-6 text-green-600" />
+        <h2 className="text-xl font-bold text-gray-800">Custom Sale</h2>
+      </div>
+
+      {isStaff && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-lg text-sm mb-4 flex items-start space-x-2">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Approval Required</p>
+            <p className="text-xs mt-1">Custom sales by staff require superadmin approval before completion.</p>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">
@@ -210,6 +252,20 @@ const SalesForm = ({ onSaleComplete }) => {
       )}
 
       <div className="space-y-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Customer Name/ID
+          </label>
+          <input
+            type="text"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            placeholder="e.g., John Doe, Store Name, Order #123"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            disabled={processing}
+          />
+        </div>
+
         <div className="flex space-x-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -218,7 +274,7 @@ const SalesForm = ({ onSaleComplete }) => {
             <select
               value={selectedProduct}
               onChange={(e) => setSelectedProduct(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               disabled={processing}
             >
               <option value="">Choose a product...</option>
@@ -230,17 +286,33 @@ const SalesForm = ({ onSaleComplete }) => {
             </select>
           </div>
 
-          <div className="w-32">
+          <div className="w-24">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Quantity
+              Qty
             </label>
             <input
               type="number"
               min="1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               disabled={processing}
+            />
+          </div>
+
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Sell Price (₱)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={customPrice}
+              onChange={(e) => setCustomPrice(e.target.value)}
+              placeholder="0.00"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              disabled={processing}
+              min="0"
             />
           </div>
 
@@ -248,45 +320,10 @@ const SalesForm = ({ onSaleComplete }) => {
             <button
               onClick={handleAddToCart}
               disabled={processing}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:bg-blue-300"
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition disabled:bg-green-300"
             >
               <Plus className="w-5 h-5" />
             </button>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            id="useSalePrice"
-            checked={useSalePrice}
-            onChange={(e) => setUseSalePrice(e.target.checked)}
-            className="w-4 h-4 rounded"
-            disabled={processing}
-          />
-          <label htmlFor="useSalePrice" className="text-sm font-medium text-gray-700">
-            Use custom negotiated price for this sale
-          </label>
-        </div>
-
-        <div className="flex items-center space-x-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Customer Type
-            </label>
-            <select
-              value={customerType}
-              onChange={(e) => setCustomerType(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={processing}
-            >
-              <option value="retail">Retail Customer</option>
-              <option value="reseller">Reseller</option>
-            </select>
-          </div>
-          <div className="text-sm text-gray-600 p-3 bg-white rounded">
-            <p className="font-semibold mb-1">Price Applies:</p>
-            <p className="text-xs">{customerType === 'reseller' ? '💜 Reseller Price' : '💙 Retail Price'}</p>
           </div>
         </div>
       </div>
@@ -298,24 +335,23 @@ const SalesForm = ({ onSaleComplete }) => {
         ) : (
           <div className="space-y-2 mb-4">
             {cart.map(item => (
-              <div key={item.productId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={item.productId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border-l-4 border-green-500">
                 <div className="flex-1">
                   <p className="font-medium text-gray-800">{item.name}</p>
                   <p className="text-sm text-gray-600">
-                    {item.quantity} x ₱{item.salePrice.toFixed(2)}
-                    {item.usedCustomPrice && <span className="ml-2 text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded">Custom Price</span>}
-                    {item.priceSource === 'reseller' && <span className="ml-2 text-xs font-semibold bg-purple-100 text-purple-800 px-2 py-1 rounded">Reseller</span>}
+                    {item.quantity} x ₱{item.customPrice.toFixed(2)}
                   </p>
                   <div className="text-xs text-gray-500 mt-1">
                     <span>Cost: ₱{item.costPrice.toFixed(2)} | Retail: ₱{item.retailPrice.toFixed(2)}</span>
-                    {item.resellerPrice > 0 && <span> | Reseller: ₱{item.resellerPrice.toFixed(2)}</span>}
                   </div>
-                  <p className="text-xs text-green-600 mt-1">
-                    Profit: ₱{(item.profit || 0).toFixed(2)}
+                  <p className="text-xs text-green-600 font-semibold mt-1">
+                    Profit: ₱{(item.profit || 0).toFixed(2)} ({item.profitMargin}%)
                   </p>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <p className="font-semibold text-gray-800">₱{item.subtotal.toFixed(2)}</p>
+                  <div className="text-right">
+                    <p className="font-semibold text-gray-800">₱{item.subtotal.toFixed(2)}</p>
+                  </div>
                   <button
                     onClick={() => handleRemoveFromCart(item.productId)}
                     className="text-red-600 hover:text-red-800"
@@ -344,18 +380,25 @@ const SalesForm = ({ onSaleComplete }) => {
           </div>
           <div className="flex justify-between items-center mb-4">
             <span className="text-lg font-bold text-gray-800">Total:</span>
-            <span className="text-2xl font-bold text-blue-600">
+            <span className="text-2xl font-bold text-green-600">
               ₱{calculateTotal().toFixed(2)}
             </span>
           </div>
 
           <button
             onClick={handleCheckout}
-            disabled={cart.length === 0 || processing}
-            className="w-full flex items-center justify-center space-x-2 bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed"
+            disabled={cart.length === 0 || processing || !customerName.trim()}
+            className="w-full flex items-center justify-center space-x-2 bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed font-semibold"
           >
-            <ShoppingCart className="w-5 h-5" />
-            <span>{processing ? 'Processing...' : 'Complete Sale'}</span>
+            <DollarSign className="w-5 h-5" />
+            <span>
+              {processing 
+                ? 'Processing...' 
+                : isStaff 
+                ? 'Submit for Approval' 
+                : 'Complete Custom Sale'
+              }
+            </span>
           </button>
         </div>
       </div>
@@ -370,4 +413,4 @@ const SalesForm = ({ onSaleComplete }) => {
   );
 };
 
-export default SalesForm;
+export default CustomSalesForm;
