@@ -80,10 +80,10 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+    <div className="space-y-4 md:space-y-6">
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Dashboard</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <StatCard
           title="Total Products"
           value={stats.totalProducts}
@@ -110,36 +110,36 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
-          <h3 className="text-lg font-semibold mb-2">Total Profit</h3>
-          <p className="text-3xl font-bold">₱{stats.totalProfit.toFixed(2)}</p>
-          <p className="text-green-100 text-sm mt-2">All-time earnings</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-4 md:p-6 text-white">
+          <h3 className="text-sm md:text-lg font-semibold mb-2">Total Profit</h3>
+          <p className="text-2xl md:text-3xl font-bold">₱{stats.totalProfit.toFixed(2)}</p>
+          <p className="text-green-100 text-xs md:text-sm mt-2">All-time earnings</p>
         </div>
         
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
-          <h3 className="text-lg font-semibold mb-2">Today's Profit</h3>
-          <p className="text-3xl font-bold">₱{stats.todayProfit.toFixed(2)}</p>
-          <p className="text-blue-100 text-sm mt-2">Today's earnings</p>
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-4 md:p-6 text-white">
+          <h3 className="text-sm md:text-lg font-semibold mb-2">Today's Profit</h3>
+          <p className="text-2xl md:text-3xl font-bold">₱{stats.todayProfit.toFixed(2)}</p>
+          <p className="text-blue-100 text-xs md:text-sm mt-2">Today's earnings</p>
         </div>
       </div>
 
       <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-bold text-gray-800">Recent Sales</h2>
+        <div className="p-4 md:p-6 border-b">
+          <h2 className="text-lg md:text-xl font-bold text-gray-800">Recent Sales</h2>
         </div>
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           {recentSales.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No sales recorded yet</p>
+            <p className="text-gray-500 text-center py-6 md:py-8 text-sm">No sales recorded yet</p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               {recentSales.map(sale => (
-                <div key={sale.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-800">
+                <div key={sale.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 md:p-4 bg-gray-50 rounded-lg gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-800 text-sm md:text-base">
                       {sale.items.length} item{sale.items.length > 1 ? 's' : ''}
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs md:text-sm text-gray-600">
                       {new Date(sale.timestamp).toLocaleString()}
                     </p>
                     {sale.totalProfit && (
@@ -149,7 +149,7 @@ const Dashboard = () => {
                     )}
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-blue-600">₱{sale.total.toFixed(2)}</p>
+                    <p className="font-bold text-blue-600 text-sm md:text-base">₱{sale.total.toFixed(2)}</p>
                   </div>
                 </div>
               ))}

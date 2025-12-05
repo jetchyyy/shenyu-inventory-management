@@ -208,22 +208,22 @@ const Inventory = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">Inventory Management</h1>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Inventory Management</h1>
         {canEdit ? (
           <button
             onClick={() => {
               setEditingItem(null);
               setShowModal(true);
             }}
-            className="flex items-center space-x-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+            className="flex items-center justify-center space-x-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition text-sm md:text-base"
           >
             <Plus className="w-5 h-5" />
             <span>Add Product</span>
           </button>
         ) : (
-          <div className="flex items-center space-x-2 bg-gray-300 text-gray-600 px-4 py-2 rounded-lg cursor-not-allowed" title="Only Admin or Superadmin can add products">
+          <div className="flex items-center justify-center space-x-2 bg-gray-300 text-gray-600 px-4 py-2 rounded-lg cursor-not-allowed text-sm md:text-base" title="Only Admin or Superadmin can add products">
             <Lock className="w-5 h-5" />
             <span>Add Product</span>
           </div>
@@ -231,21 +231,21 @@ const Inventory = () => {
       </div>
 
       {/* Total Cost Price Card */}
-      <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg shadow p-6 border-l-4 border-purple-500">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-purple-600 uppercase tracking-wide">Total Inventory Value</p>
-            <p className="text-4xl font-bold text-purple-900 mt-2">
+      <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg shadow p-4 md:p-6 border-l-4 border-purple-500">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1">
+            <p className="text-xs md:text-sm font-medium text-purple-600 uppercase tracking-wide">Total Inventory Value</p>
+            <p className="text-2xl md:text-4xl font-bold text-purple-900 mt-2">
               ₱{filteredItems.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0).toFixed(2)}
             </p>
             <p className="text-xs text-purple-600 mt-2">Based on cost price × quantity</p>
           </div>
-          <div className="text-6xl text-purple-200">📦</div>
+          <div className="text-4xl md:text-6xl text-purple-200">📦</div>
         </div>
       </div>
 
       <div className="bg-white rounded-lg shadow">
-        <div className="p-4 border-b">
+        <div className="p-3 md:p-4 border-b">
           <div className="relative">
             <Search className="w-5 h-5 text-gray-400 absolute left-3 top-3" />
             <input
@@ -253,7 +253,7 @@ const Inventory = () => {
               placeholder="Search by name or SKU..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             />
           </div>
         </div>

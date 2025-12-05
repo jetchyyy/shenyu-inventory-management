@@ -94,7 +94,7 @@ const App = () => {
         userRole={userRole}
         userEmail={user.email}
       />
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6">
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'inventory' && <Inventory />}
         {activeTab === 'sales' && <Sales />}

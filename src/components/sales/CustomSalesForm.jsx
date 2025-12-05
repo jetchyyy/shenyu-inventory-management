@@ -229,52 +229,52 @@ const CustomSalesForm = ({ onSaleComplete }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center space-x-2 mb-6">
-        <DollarSign className="w-6 h-6 text-green-600" />
-        <h2 className="text-xl font-bold text-gray-800">Custom Sale</h2>
+    <div className="bg-white rounded-lg shadow p-4 md:p-6">
+      <div className="flex items-center space-x-2 mb-4 md:mb-6">
+        <DollarSign className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
+        <h2 className="text-lg md:text-xl font-bold text-gray-800">Custom Sale</h2>
       </div>
 
       {isStaff && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-lg text-sm mb-4 flex items-start space-x-2">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-lg text-xs md:text-sm mb-4 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold">Approval Required</p>
-            <p className="text-xs mt-1">Custom sales by staff require superadmin approval before completion.</p>
+            <p className="text-xs mt-1">Custom sales require superadmin approval.</p>
           </div>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">
+        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs md:text-sm mb-4">
           {error}
         </div>
       )}
 
-      <div className="space-y-4 mb-6">
+      <div className="space-y-3 md:space-y-4 mb-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
             Customer Name/ID
           </label>
           <input
             type="text"
             value={customerName}
             onChange={(e) => setCustomerName(e.target.value)}
-            placeholder="e.g., John Doe, Store Name, Order #123"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            placeholder="e.g., John Doe, Order #123"
+            className="w-full px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
             disabled={processing}
           />
         </div>
 
-        <div className="flex space-x-4">
+        <div className="flex flex-col sm:flex-row gap-2 sm:space-x-3">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
               Select Product
             </label>
             <select
               value={selectedProduct}
               onChange={(e) => setSelectedProduct(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
               disabled={processing}
             >
               <option value="">Choose a product...</option>
@@ -286,8 +286,8 @@ const CustomSalesForm = ({ onSaleComplete }) => {
             </select>
           </div>
 
-          <div className="w-24">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="w-full sm:w-20 md:w-24">
+            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
               Qty
             </label>
             <input
@@ -295,13 +295,13 @@ const CustomSalesForm = ({ onSaleComplete }) => {
               min="1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
               disabled={processing}
             />
           </div>
 
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
               Sell Price (₱)
             </label>
             <input
@@ -310,7 +310,7 @@ const CustomSalesForm = ({ onSaleComplete }) => {
               value={customPrice}
               onChange={(e) => setCustomPrice(e.target.value)}
               placeholder="0.00"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
               disabled={processing}
               min="0"
             />
@@ -320,7 +320,7 @@ const CustomSalesForm = ({ onSaleComplete }) => {
             <button
               onClick={handleAddToCart}
               disabled={processing}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition disabled:bg-green-300"
+              className="w-full sm:w-auto px-3 md:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition disabled:bg-green-300 text-sm md:text-base"
             >
               <Plus className="w-5 h-5" />
             </button>
@@ -328,59 +328,56 @@ const CustomSalesForm = ({ onSaleComplete }) => {
         </div>
       </div>
 
-      <div className="border-t pt-4">
-        <h3 className="font-semibold text-gray-800 mb-4">Cart Items</h3>
+      <div className="border-t pt-3 md:pt-4">
+        <h3 className="font-semibold text-gray-800 mb-3 text-sm md:text-base">Cart Items</h3>
         {cart.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No items in cart</p>
+          <p className="text-gray-500 text-center py-6 md:py-8 text-sm">No items in cart</p>
         ) : (
           <div className="space-y-2 mb-4">
             {cart.map(item => (
-              <div key={item.productId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border-l-4 border-green-500">
-                <div className="flex-1">
-                  <p className="font-medium text-gray-800">{item.name}</p>
-                  <p className="text-sm text-gray-600">
-                    {item.quantity} x ₱{item.customPrice.toFixed(2)}
-                  </p>
-                  <div className="text-xs text-gray-500 mt-1">
-                    <span>Cost: ₱{item.costPrice.toFixed(2)} | Retail: ₱{item.retailPrice.toFixed(2)}</span>
+              <div key={item.productId} className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border-l-4 border-green-500">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-800 text-sm truncate">{item.name}</p>
+                    <p className="text-xs text-gray-600">
+                      {item.quantity} x ₱{item.customPrice.toFixed(2)}
+                    </p>
                   </div>
-                  <p className="text-xs text-green-600 font-semibold mt-1">
-                    Profit: ₱{(item.profit || 0).toFixed(2)} ({item.profitMargin}%)
-                  </p>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-800">₱{item.subtotal.toFixed(2)}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-800 text-sm">₱{item.subtotal.toFixed(2)}</p>
+                    <button
+                      onClick={() => handleRemoveFromCart(item.productId)}
+                      className="text-red-600 hover:text-red-800 flex-shrink-0"
+                      disabled={processing}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleRemoveFromCart(item.productId)}
-                    className="text-red-600 hover:text-red-800"
-                    disabled={processing}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
+                <p className="text-xs text-green-600 font-semibold">
+                  Profit: ₱{(item.profit || 0).toFixed(2)} ({item.profitMargin}%)
+                </p>
               </div>
             ))}
           </div>
         )}
 
-        <div className="border-t pt-4 mt-4">
-          <div className="flex justify-between items-center mb-2">
+        <div className="border-t pt-3 md:pt-4 mt-4">
+          <div className="flex justify-between items-center mb-2 text-sm">
             <span className="text-gray-700">Subtotal:</span>
-            <span className="text-lg font-semibold text-gray-800">
+            <span className="font-semibold text-gray-800">
               ₱{calculateTotal().toFixed(2)}
             </span>
           </div>
-          <div className="flex justify-between items-center mb-4 pb-4 border-b">
+          <div className="flex justify-between items-center mb-3 md:mb-4 pb-3 md:pb-4 border-b text-sm">
             <span className="text-gray-700">Total Profit:</span>
-            <span className="text-lg font-semibold text-green-600">
+            <span className="font-semibold text-green-600">
               ₱{calculateTotalProfit().toFixed(2)}
             </span>
           </div>
           <div className="flex justify-between items-center mb-4">
-            <span className="text-lg font-bold text-gray-800">Total:</span>
-            <span className="text-2xl font-bold text-green-600">
+            <span className="font-bold text-gray-800 text-sm">Total:</span>
+            <span className="text-lg md:text-2xl font-bold text-green-600">
               ₱{calculateTotal().toFixed(2)}
             </span>
           </div>
@@ -388,7 +385,7 @@ const CustomSalesForm = ({ onSaleComplete }) => {
           <button
             onClick={handleCheckout}
             disabled={cart.length === 0 || processing || !customerName.trim()}
-            className="w-full flex items-center justify-center space-x-2 bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed font-semibold"
+            className="w-full flex items-center justify-center gap-2 bg-green-500 text-white py-2 md:py-3 rounded-lg hover:bg-green-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed font-semibold text-sm md:text-base"
           >
             <DollarSign className="w-5 h-5" />
             <span>

@@ -35,10 +35,10 @@ const Sales = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-800">Sales Management</h1>
+    <div className="space-y-4 md:space-y-6">
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Sales Management</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
         <div>
           <SalesForm onSaleComplete={handleSaleComplete} />
         </div>
@@ -47,7 +47,7 @@ const Sales = () => {
           <CustomSalesForm onSaleComplete={handleSaleComplete} />
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           <ApprovalsDashboard />
           <SalesHistory sales={sales} />
         </div>
