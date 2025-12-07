@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../../config/firebase';
-import { ShoppingCart, Zap, TrendingUp, Calendar } from 'lucide-react';
+import { ShoppingCart, Zap, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
 
 const ProfitAnalytics = () => {
   const [profitData, setProfitData] = useState({
     totalSalesProfit: 0,
     totalLoanProfit: 0,
     totalProfit: 0,
+    totalExpenses: 0,
+    totalGiveaways: 0,
+    netProfit: 0,
     salesCount: 0,
     completedLoans: 0,
     monthlyData: {}
@@ -16,7 +19,10 @@ const ProfitAnalytics = () => {
   const [monthlyBreakdown, setMonthlyBreakdown] = useState({
     salesProfit: 0,
     loanProfit: 0,
-    totalProfit: 0
+    expenses: 0,
+    giveaways: 0,
+    totalProfit: 0,
+    netProfit: 0
   });
 
   useEffect(() => {
@@ -124,24 +130,109 @@ const ProfitAnalytics = () => {
       }
     });
 
+    const unsubExpenses = onValue(ref(database, 'expenses'), (snapshot) => {
+      if (snapshot.exists()) {
+        const expenseData = snapshot.val();
+        const expensesList = Object.keys(expenseData).map(key => ({
+          id: key,
+          ...expenseData[key]
+        }));
+
+        let totalExpenses = 0;
+        let totalGiveaways = 0;
+        const monthlyExpenses = {};
+
+        expensesList.forEach(exp => {
+          const expDate = new Date(exp.date);
+          const monthKey = expDate.toISOString().slice(0, 7);
+
+          if (!monthlyExpenses[monthKey]) {
+            monthlyExpenses[monthKey] = {
+              expenses: 0,
+              giveaways: 0
+            };
+          }
+
+          if (exp.type === 'expense') {
+            totalExpenses += exp.amount;
+            monthlyExpenses[monthKey].expenses += exp.amount;
+          } else {
+            totalGiveaways += exp.cost;
+            monthlyExpenses[monthKey].giveaways += exp.cost;
+          }
+        });
+
+        setProfitData(prev => {
+          const merged = { ...prev.monthlyData };
+          Object.keys(monthlyExpenses).forEach(month => {
+            merged[month] = {
+              ...merged[month],
+              expenses: monthlyExpenses[month].expenses,
+              giveaways: monthlyExpenses[month].giveaways
+            };
+          });
+
+          const netProfit = prev.totalProfit - totalExpenses - totalGiveaways;
+
+          return {
+            ...prev,
+            totalExpenses,
+            totalGiveaways,
+            netProfit,
+            monthlyData: merged
+          };
+        });
+
+        // Update monthly breakdown
+        const currentMonth = selectedMonth;
+        if (monthlyExpenses[currentMonth]) {
+          setMonthlyBreakdown(prev => ({
+            ...prev,
+            expenses: monthlyExpenses[currentMonth].expenses,
+            giveaways: monthlyExpenses[currentMonth].giveaways,
+            netProfit: prev.totalProfit - monthlyExpenses[currentMonth].expenses - monthlyExpenses[currentMonth].giveaways
+          }));
+        }
+      } else {
+        setProfitData(prev => ({
+          ...prev,
+          totalExpenses: 0,
+          totalGiveaways: 0,
+          netProfit: prev.totalProfit
+        }));
+      }
+    });
+
     return () => {
       unsubSales();
       unsubCreditItems();
+      unsubExpenses();
     };
   }, [selectedMonth]);
 
   const updateMonthlyBreakdown = (monthData) => {
     if (monthData) {
+      const totalProfit = (monthData.salesProfit || 0) + (monthData.loanProfit || 0);
+      const expenses = monthData.expenses || 0;
+      const giveaways = monthData.giveaways || 0;
+      const netProfit = totalProfit - expenses - giveaways;
+
       setMonthlyBreakdown({
         salesProfit: monthData.salesProfit || 0,
         loanProfit: monthData.loanProfit || 0,
-        totalProfit: (monthData.salesProfit || 0) + (monthData.loanProfit || 0)
+        expenses,
+        giveaways,
+        totalProfit,
+        netProfit
       });
     } else {
       setMonthlyBreakdown({
         salesProfit: 0,
         loanProfit: 0,
-        totalProfit: 0
+        expenses: 0,
+        giveaways: 0,
+        totalProfit: 0,
+        netProfit: 0
       });
     }
   };
@@ -166,7 +257,7 @@ const ProfitAnalytics = () => {
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Profit Analytics</h1>
 
       {/* Overall Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-3 md:p-6 text-white">
           <h3 className="text-xs md:text-lg font-semibold mb-2">Total Profit</h3>
           <p className="text-xl md:text-3xl font-bold">₱{profitData.totalProfit.toFixed(2)}</p>
@@ -189,6 +280,19 @@ const ProfitAnalytics = () => {
           </div>
           <p className="text-xl md:text-3xl font-bold">₱{profitData.totalLoanProfit.toFixed(2)}</p>
           <p className="text-amber-100 text-xs mt-1 md:text-sm">{getLoanPercentage()}% • {profitData.completedLoans} loans</p>
+        </div>
+
+        <div className={`bg-gradient-to-br rounded-lg shadow-lg p-3 md:p-6 text-white ${
+          profitData.netProfit >= 0
+            ? 'from-blue-500 to-blue-600'
+            : 'from-red-500 to-red-600'
+        }`}>
+          <div className="flex items-center justify-between mb-2 md:mb-3">
+            <h3 className="text-xs md:text-lg font-semibold">Net Profit</h3>
+            <TrendingDown className="w-4 h-4 md:w-6 md:h-6 flex-shrink-0" />
+          </div>
+          <p className="text-xl md:text-3xl font-bold">₱{profitData.netProfit.toFixed(2)}</p>
+          <p className="text-blue-100 text-xs mt-1 md:text-sm">After expenses</p>
         </div>
       </div>
 
@@ -219,20 +323,34 @@ const ProfitAnalytics = () => {
           </select>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 border-l-4 border-emerald-500">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-3 md:p-4 border-l-4 border-emerald-500">
             <p className="text-xs md:text-sm text-gray-600 mb-1">Sales Profit</p>
-            <p className="text-2xl md:text-3xl font-bold text-emerald-600">₱{monthlyBreakdown.salesProfit.toFixed(2)}</p>
+            <p className="text-xl md:text-2xl font-bold text-emerald-600">₱{monthlyBreakdown.salesProfit.toFixed(2)}</p>
           </div>
 
-          <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-4 border-l-4 border-amber-500">
-            <p className="text-xs md:text-sm text-gray-600 mb-1">Loan Profit (Interest)</p>
-            <p className="text-2xl md:text-3xl font-bold text-amber-600">₱{monthlyBreakdown.loanProfit.toFixed(2)}</p>
+          <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-3 md:p-4 border-l-4 border-amber-500">
+            <p className="text-xs md:text-sm text-gray-600 mb-1">Loan Profit</p>
+            <p className="text-xl md:text-2xl font-bold text-amber-600">₱{monthlyBreakdown.loanProfit.toFixed(2)}</p>
           </div>
 
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border-l-4 border-green-500">
-            <p className="text-xs md:text-sm text-gray-600 mb-1">Total Profit</p>
-            <p className="text-2xl md:text-3xl font-bold text-green-600">₱{monthlyBreakdown.totalProfit.toFixed(2)}</p>
+          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-3 md:p-4 border-l-4 border-red-500">
+            <p className="text-xs md:text-sm text-gray-600 mb-1">Total Expenses</p>
+            <p className="text-xl md:text-2xl font-bold text-red-600">₱{monthlyBreakdown.expenses.toFixed(2)}</p>
+            {monthlyBreakdown.giveaways > 0 && (
+              <p className="text-xs text-gray-600 mt-1">Giveaway: ₱{monthlyBreakdown.giveaways.toFixed(2)}</p>
+            )}
+          </div>
+
+          <div className={`bg-gradient-to-br rounded-lg p-3 md:p-4 border-l-4 text-white ${
+            monthlyBreakdown.netProfit >= 0
+              ? 'from-blue-50 to-blue-100 border-blue-500'
+              : 'from-red-50 to-red-100 border-red-500'
+          }`}>
+            <p className={`text-xs md:text-sm ${monthlyBreakdown.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'} mb-1`}>Net Profit</p>
+            <p className={`text-xl md:text-2xl font-bold ${monthlyBreakdown.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+              ₱{monthlyBreakdown.netProfit.toFixed(2)}
+            </p>
           </div>
         </div>
       </div>
@@ -249,12 +367,12 @@ const ProfitAnalytics = () => {
           <div>
             <div className="flex justify-between mb-2">
               <p className="text-sm md:text-base font-medium text-gray-700">Sales Profit</p>
-              <p className="text-sm md:text-base font-bold text-emerald-600">₱{profitData.totalSalesProfit.toFixed(2)} ({getSalesPercentage()}%)</p>
+              <p className="text-sm md:text-base font-bold text-emerald-600">₱{profitData.totalSalesProfit.toFixed(2)}</p>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 md:h-4 overflow-hidden">
               <div
                 className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full transition-all duration-500"
-                style={{ width: `${getSalesPercentage()}%` }}
+                style={{ width: '100%' }}
               ></div>
             </div>
           </div>
@@ -263,12 +381,46 @@ const ProfitAnalytics = () => {
           <div>
             <div className="flex justify-between mb-2">
               <p className="text-sm md:text-base font-medium text-gray-700">Loan Profit (Interest)</p>
-              <p className="text-sm md:text-base font-bold text-amber-600">₱{profitData.totalLoanProfit.toFixed(2)} ({getLoanPercentage()}%)</p>
+              <p className="text-sm md:text-base font-bold text-amber-600">₱{profitData.totalLoanProfit.toFixed(2)}</p>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 md:h-4 overflow-hidden">
               <div
                 className="bg-gradient-to-r from-amber-400 to-amber-600 h-full transition-all duration-500"
-                style={{ width: `${getLoanPercentage()}%` }}
+                style={{ width: '100%' }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Total Expenses Bar */}
+          <div>
+            <div className="flex justify-between mb-2">
+              <p className="text-sm md:text-base font-medium text-gray-700">Total Expenses</p>
+              <p className="text-sm md:text-base font-bold text-red-600">₱{profitData.totalExpenses.toFixed(2)}</p>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 md:h-4 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-red-400 to-red-600 h-full transition-all duration-500"
+                style={{ width: '100%' }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Net Profit Bar */}
+          <div>
+            <div className="flex justify-between mb-2">
+              <p className="text-sm md:text-base font-medium text-gray-700">Net Profit</p>
+              <p className={`text-sm md:text-base font-bold ${profitData.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                ₱{profitData.netProfit.toFixed(2)}
+              </p>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 md:h-4 overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  profitData.netProfit >= 0
+                    ? 'bg-gradient-to-r from-blue-400 to-blue-600'
+                    : 'bg-gradient-to-r from-red-400 to-red-600'
+                }`}
+                style={{ width: '100%' }}
               ></div>
             </div>
           </div>
@@ -276,7 +428,7 @@ const ProfitAnalytics = () => {
 
         <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-xs md:text-sm text-blue-900">
-            <strong>Total Profit Breakdown:</strong> Your profit comes from {profitData.salesCount} sales transactions and {profitData.completedLoans} completed loan interests. This includes all earnings from product sales markup and interest collected from credit/loan items.
+            <strong>Total Profit Breakdown:</strong> Your net profit is calculated from {profitData.salesCount} sales transactions and {profitData.completedLoans} completed loan interests, minus total business expenses of ₱{profitData.totalExpenses.toFixed(2)}. Final net profit: ₱{profitData.netProfit.toFixed(2)}
           </p>
         </div>
       </div>

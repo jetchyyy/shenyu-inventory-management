@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ref, onValue, get, set, push } from 'firebase/database';
 import { database } from '../../config/firebase';
+import { useAuth } from '../../hooks/useAuth';
 import SuccessModal from '../shared/SuccessModal';
-import { Plus, AlertCircle } from 'lucide-react';
+import { Plus, AlertCircle, Info } from 'lucide-react';
+import { creditApprovalService } from '../../services/creditApprovalService';
 
 const CreditItemsForm = ({ onCreditComplete }) => {
+  const { user, userRole } = useAuth();
   const [products, setProducts] = useState([]);
   const [formData, setFormData] = useState({
     customerName: '',
@@ -102,15 +105,11 @@ const CreditItemsForm = ({ onCreditComplete }) => {
         return;
       }
 
-      // Create credit item record
-      const creditItemRef = push(ref(database, 'creditItems'));
-      const creditItemId = creditItemRef.key;
-
       const baseValue = product.retailPrice * parseInt(formData.quantity);
       const interestAmount = (baseValue * parseFloat(formData.interestPercentage)) / 100;
       const totalWithInterest = baseValue + interestAmount;
 
-      await set(creditItemRef, {
+      const creditItemData = {
         customerName: formData.customerName.trim(),
         productId: formData.selectedProduct,
         productName: product.name,
@@ -124,29 +123,51 @@ const CreditItemsForm = ({ onCreditComplete }) => {
         weeklyDay: formData.paymentSchedule === 'weekly' ? formData.weeklyDay : null,
         monthlyDate: formData.paymentSchedule === 'monthly' ? parseInt(formData.monthlyDate) : null,
         startDate: formData.startDate,
-        createdAt: Date.now(),
         status: 'active', // active, completed, overdue
         baseValue: baseValue,
         totalValue: totalWithInterest,
         remainingValue: totalWithInterest,
         lastPaymentDate: null,
         nextDueDate: calculateNextDueDate(formData.startDate, formData.paymentSchedule, formData.weeklyDay, formData.monthlyDate)
-      });
+      };
 
-      // Update inventory - reduce quantity
-      const productRef = ref(database, `inventory/${formData.selectedProduct}`);
-      const productSnapshot = await get(productRef);
-      await set(productRef, {
-        ...productSnapshot.val(),
-        quantity: productSnapshot.val().quantity - parseInt(formData.quantity),
-        updatedAt: Date.now()
-      });
+      // Check if user is staff - if so, create approval request instead
+      if (userRole === 'staff') {
+        const result = await creditApprovalService.createApprovalRequest(creditItemData, user.uid);
+        
+        if (result.success) {
+          setSuccessModal({
+            isOpen: true,
+            title: 'Approval Request Sent',
+            message: `Credit request for ${product.name} to ${formData.customerName} has been submitted for approval. Base Value: ₱${baseValue.toFixed(2)}, Interest: ₱${interestAmount.toFixed(2)}, Total: ₱${totalWithInterest.toFixed(2)}. Please wait for admin/superadmin approval.`
+          });
+        } else {
+          setError(result.error || 'Failed to submit approval request');
+        }
+      } else {
+        // Admin/Superadmin - create credit item directly
+        const creditItemRef = push(ref(database, 'creditItems'));
 
-      setSuccessModal({
-        isOpen: true,
-        title: 'Credit Item Created',
-        message: `${product.name} loaned to ${formData.customerName}. Base Value: ₱${baseValue.toFixed(2)}, Interest: ₱${interestAmount.toFixed(2)}, Total: ₱${totalWithInterest.toFixed(2)}. Inventory updated.`
-      });
+        await set(creditItemRef, {
+          ...creditItemData,
+          createdAt: Date.now()
+        });
+
+        // Update inventory - reduce quantity
+        const productRef = ref(database, `inventory/${formData.selectedProduct}`);
+        const productSnapshot = await get(productRef);
+        await set(productRef, {
+          ...productSnapshot.val(),
+          quantity: productSnapshot.val().quantity - parseInt(formData.quantity),
+          updatedAt: Date.now()
+        });
+
+        setSuccessModal({
+          isOpen: true,
+          title: 'Credit Item Created',
+          message: `${product.name} loaned to ${formData.customerName}. Base Value: ₱${baseValue.toFixed(2)}, Interest: ₱${interestAmount.toFixed(2)}, Total: ₱${totalWithInterest.toFixed(2)}. Inventory updated.`
+        });
+      }
 
       // Reset form
       setFormData({
@@ -191,6 +212,13 @@ const CreditItemsForm = ({ onCreditComplete }) => {
         <Plus className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
         <h2 className="text-lg md:text-xl font-bold text-gray-800">New Credit Item</h2>
       </div>
+
+      {userRole === 'staff' && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-900 p-3 rounded-lg text-xs md:text-sm mb-4 flex items-start space-x-2">
+          <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <span>As a staff member, credit items you create will require approval from an admin or superadmin before they are finalized.</span>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs md:text-sm mb-4 flex items-start space-x-2">

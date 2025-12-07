@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ref, onValue, remove, set, push, get } from 'firebase/database';
 import { database } from '../../config/firebase';
+import { useAuth } from '../../hooks/useAuth';
 import CreditItemsForm from './CreditItemsForm';
 import CreditItemsTable from './CreditItemsTable';
 import PaymentModal from './PaymentModal';
@@ -10,6 +11,7 @@ import SuccessModal from '../shared/SuccessModal';
 import { Search, List, History } from 'lucide-react';
 
 const CreditItems = () => {
+  const { userRole } = useAuth();
   const [creditItems, setCreditItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -314,10 +316,10 @@ const CreditItems = () => {
         <div className="lg:col-span-2 space-y-4 md:space-y-6">
           {/* Tab Navigation */}
           <div className="bg-white rounded-lg shadow border-b">
-            <div className="flex gap-0">
+            <div className="flex gap-0 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('items')}
-                className={`flex items-center gap-2 px-4 md:px-6 py-3 font-medium text-sm md:text-base transition border-b-2 ${
+                className={`flex items-center gap-2 px-4 md:px-6 py-3 font-medium text-sm md:text-base transition border-b-2 whitespace-nowrap ${
                   activeTab === 'items'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-600 hover:text-gray-800'
@@ -328,7 +330,7 @@ const CreditItems = () => {
               </button>
               <button
                 onClick={() => setActiveTab('history')}
-                className={`flex items-center gap-2 px-4 md:px-6 py-3 font-medium text-sm md:text-base transition border-b-2 ${
+                className={`flex items-center gap-2 px-4 md:px-6 py-3 font-medium text-sm md:text-base transition border-b-2 whitespace-nowrap ${
                   activeTab === 'history'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-600 hover:text-gray-800'
