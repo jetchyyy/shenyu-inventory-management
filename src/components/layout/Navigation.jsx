@@ -23,6 +23,7 @@ const Navigation = ({ activeTab, setActiveTab, userRole, userEmail }) => {
     { id: 'expenses', label: 'Expenses' },
     ...(userRole === 'admin' || userRole === 'superadmin' ? [{ id: 'approvals', label: 'Approvals' }] : []),
     { id: 'profit', label: 'Profit' },
+    { id: 'analytics', label: 'Analytics' },
     ...(userRole === 'superadmin' ? [{ id: 'users', label: 'Users' }] : [])
   ];
 

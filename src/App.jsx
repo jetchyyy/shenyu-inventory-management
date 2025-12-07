@@ -11,6 +11,7 @@ import Sales from './components/sales/Sales';
 import CreditItems from './components/credits/CreditItems';
 import Expenses from './components/expenses/Expenses';
 import Approvals from './components/approvals/Approvals';
+import Analytics from './components/analytics/Analytics';
 import ProfitAnalytics from './components/profit/ProfitAnalytics';
 import UserManagement from './components/users/UserManagement';
 
@@ -106,6 +107,7 @@ const App = () => {
         {activeTab === 'expenses' && <Expenses />}
         {activeTab === 'approvals' && (userRole === 'admin' || userRole === 'superadmin') && <Approvals />}
         {activeTab === 'profit' && <ProfitAnalytics />}
+        {activeTab === 'analytics' && <Analytics />}
         {activeTab === 'users' && userRole === 'superadmin' && <UserManagement />}
       </main>
     </div>
