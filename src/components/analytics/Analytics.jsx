@@ -6,6 +6,8 @@ import SalesChart from './SalesChart';
 import TopProductsChart from './TopProductsChart';
 import ExpensesChart from './ExpensesChart';
 import CategoryBreakdown from './CategoryBreakdown';
+import TopResellersChart from './TopResellersChart';
+import ResellerPerformanceChart from './ResellerPerformanceChart';
 import { TrendingUp, Calendar } from 'lucide-react';
 
 const Analytics = () => {
@@ -19,7 +21,8 @@ const Analytics = () => {
     salesData: [],
     topProducts: [],
     expensesData: [],
-    categoryData: []
+    categoryData: [],
+    topResellers: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -27,6 +30,9 @@ const Analytics = () => {
     setLoading(true);
     const daysInRange = parseInt(timeRange);
     const cutoffDate = Date.now() - (daysInRange * 24 * 60 * 60 * 1000);
+
+    let salesLoaded = false;
+    let expensesLoaded = false;
 
     // Fetch sales data
     const salesRef = ref(database, 'sales');
@@ -50,16 +56,26 @@ const Analytics = () => {
         // Group sales by date
         const salesByDate = {};
         sales.forEach(sale => {
-          const dateStr = new Date(sale.timestamp).toLocaleDateString();
+          const dateStr = new Date(sale.timestamp).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          });
           if (!salesByDate[dateStr]) {
             salesByDate[dateStr] = { date: dateStr, sales: 0, profit: 0, orders: 0 };
           }
-          salesByDate[dateStr].sales += sale.total;
+          salesByDate[dateStr].sales += sale.total || 0;
           salesByDate[dateStr].profit += sale.totalProfit || 0;
           salesByDate[dateStr].orders += 1;
         });
 
-        const salesChartData = Object.values(salesByDate).slice(-parseInt(timeRange));
+        // Get last 15 days of data, or all data if less than 15 days exist
+        const allDates = Object.values(salesByDate).sort((a, b) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          return dateA - dateB;
+        });
+        const salesChartData = allDates.slice(-15);
 
         // Get top products
         const productSales = {};
@@ -86,6 +102,41 @@ const Analytics = () => {
           .sort((a, b) => b.quantity - a.quantity)
           .slice(0, 10);
 
+        // Get top resellers
+        const resellerSales = {};
+        sales.forEach(sale => {
+          // Only track reseller sales
+          if (sale.customerType === 'reseller' && sale.customerName) {
+            if (!resellerSales[sale.customerName]) {
+              resellerSales[sale.customerName] = {
+                name: sale.customerName,
+                totalSales: 0,
+                totalProfit: 0,
+                totalItems: 0,
+                transactionCount: 0
+              };
+            }
+            resellerSales[sale.customerName].totalSales += sale.total || 0;
+            resellerSales[sale.customerName].totalProfit += sale.totalProfit || 0;
+            resellerSales[sale.customerName].transactionCount += 1;
+
+            // Count items
+            if (sale.items) {
+              sale.items.forEach(item => {
+                resellerSales[sale.customerName].totalItems += item.quantity || 0;
+              });
+            }
+          }
+        });
+
+        const topResellers = Object.values(resellerSales)
+          .map(reseller => ({
+            ...reseller,
+            averageSale: reseller.transactionCount > 0 ? reseller.totalSales / reseller.transactionCount : 0,
+            profitMargin: reseller.totalSales > 0 ? (reseller.totalProfit / reseller.totalSales * 100) : 0
+          }))
+          .sort((a, b) => b.totalSales - a.totalSales);
+
         setAnalytics(prev => ({
           ...prev,
           totalSales,
@@ -93,8 +144,14 @@ const Analytics = () => {
           averageOrderValue: avgOrderValue,
           profitMargin,
           salesData: salesChartData,
-          topProducts
+          topProducts,
+          topResellers
         }));
+
+        salesLoaded = true;
+        if (expensesLoaded) {
+          setLoading(false);
+        }
       }
     });
 
@@ -114,7 +171,11 @@ const Analytics = () => {
         // Group expenses by date
         const expensesByDate = {};
         expenses.forEach(exp => {
-          const dateStr = new Date(exp.date).toLocaleDateString();
+          const dateStr = new Date(exp.date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          });
           if (!expensesByDate[dateStr]) {
             expensesByDate[dateStr] = { date: dateStr, expenses: 0, giveaways: 0 };
           }
@@ -125,7 +186,13 @@ const Analytics = () => {
           }
         });
 
-        const expensesChartData = Object.values(expensesByDate).slice(-parseInt(timeRange));
+        const expensesChartData = Object.values(expensesByDate)
+          .sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateA - dateB;
+          })
+          .slice(-15);
 
         // Group expenses by category
         const categoryData = {};
@@ -147,8 +214,18 @@ const Analytics = () => {
           expensesData: expensesChartData,
           categoryData: Object.values(categoryData).sort((a, b) => b.amount - a.amount)
         }));
+
+        expensesLoaded = true;
+        if (salesLoaded) {
+          setLoading(false);
+        }
+      } else {
+        // No expenses data yet
+        expensesLoaded = true;
+        if (salesLoaded) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
     });
 
     return () => {
@@ -203,6 +280,17 @@ const Analytics = () => {
             {/* Category Breakdown */}
             <CategoryBreakdown data={analytics.categoryData} />
           </div>
+
+          {/* Reseller Analytics */}
+          {analytics.topResellers.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Top Resellers */}
+              <TopResellersChart resellers={analytics.topResellers} />
+
+              {/* Reseller Performance */}
+              <ResellerPerformanceChart resellers={analytics.topResellers} />
+            </div>
+          )}
         </>
       )}
 

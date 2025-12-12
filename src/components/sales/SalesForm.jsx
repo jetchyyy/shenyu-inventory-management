@@ -285,7 +285,7 @@ const SalesForm = ({ onSaleComplete }) => {
             </select>
           </div>
           <div className="text-xs md:text-sm text-gray-600 p-2 md:p-3 bg-white rounded flex items-center justify-center whitespace-nowrap">
-            <p>{customerType === 'reseller' ? '💜 Reseller' : '💙 Retail'}</p>
+            <p>{customerType === 'reseller' ? ' Reseller' : ' Retail'}</p>
           </div>
         </div>
       </div>

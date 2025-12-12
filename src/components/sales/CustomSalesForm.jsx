@@ -13,6 +13,7 @@ const CustomSalesForm = ({ onSaleComplete }) => {
   const [quantity, setQuantity] = useState(1);
   const [customPrice, setCustomPrice] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [customerType, setCustomerType] = useState('retail'); // 'retail' or 'reseller'
   const [error, setError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [successModal, setSuccessModal] = useState({
@@ -168,6 +169,7 @@ const CustomSalesForm = ({ onSaleComplete }) => {
           total: total,
           totalProfit: profit,
           customerName: customerName,
+          customerType: customerType,
           saleType: 'custom',
           requestedBy: auth.currentUser.uid,
           status: 'pending',
@@ -177,6 +179,7 @@ const CustomSalesForm = ({ onSaleComplete }) => {
 
         setCart([]);
         setCustomerName('');
+        setCustomerType('retail');
         setSuccessModal({
           isOpen: true,
           title: 'Sale Submitted for Approval',
@@ -191,6 +194,7 @@ const CustomSalesForm = ({ onSaleComplete }) => {
           total: total,
           totalProfit: profit,
           customerName: customerName,
+          customerType: customerType,
           saleType: 'custom',
           status: 'approved',
           soldBy: auth.currentUser.uid,
@@ -212,6 +216,7 @@ const CustomSalesForm = ({ onSaleComplete }) => {
 
         setCart([]);
         setCustomerName('');
+        setCustomerType('retail');
         setSuccessModal({
           isOpen: true,
           title: 'Custom Sale Completed',
@@ -253,17 +258,58 @@ const CustomSalesForm = ({ onSaleComplete }) => {
 
       <div className="space-y-3 md:space-y-4 mb-6">
         <div>
+          <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">
+            Customer Type
+          </label>
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <input
+                type="radio"
+                id="retail"
+                name="customerType"
+                value="retail"
+                checked={customerType === 'retail'}
+                onChange={(e) => setCustomerType(e.target.value)}
+                className="w-4 h-4 text-blue-600"
+                disabled={processing}
+              />
+              <label htmlFor="retail" className="text-sm font-medium text-gray-700 cursor-pointer">
+                 Retail
+              </label>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="radio"
+                id="reseller"
+                name="customerType"
+                value="reseller"
+                checked={customerType === 'reseller'}
+                onChange={(e) => setCustomerType(e.target.value)}
+                className="w-4 h-4 text-purple-600"
+                disabled={processing}
+              />
+              <label htmlFor="reseller" className="text-sm font-medium text-gray-700 cursor-pointer">
+                 Reseller
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div>
           <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-            Customer Name/ID
+            Customer Name {customerType === 'reseller' && <span className="text-purple-600">*</span>}
           </label>
           <input
             type="text"
             value={customerName}
             onChange={(e) => setCustomerName(e.target.value)}
-            placeholder="e.g., John Doe, Order #123"
+            placeholder={customerType === 'reseller' ? "e.g., John's Electronics" : "e.g., John Doe, Order #123"}
             className="w-full px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
             disabled={processing}
           />
+          {customerType === 'reseller' && (
+            <p className="text-xs text-purple-600 mt-1">This sale will be tracked for reseller analytics</p>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 sm:space-x-3">

@@ -5,12 +5,20 @@ const SalesChart = ({ data }) => {
     return `₱${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   };
 
+  // Ensure data is an array and has valid values
+  const validData = Array.isArray(data) ? data : [];
+  
   // Get max value for scaling
-  const maxValue = data.length > 0 ? Math.max(...data.map(d => d.sales)) : 0;
-  const scale = maxValue > 0 ? 100 / maxValue : 1;
+  const maxValue = validData.length > 0 ? Math.max(...validData.map(d => d.sales || 0)) : 0;
+  const scale = maxValue > 0 ? 100 / maxValue : 100;
 
   // Limit to last 15 days for better visualization
-  const displayData = data.slice(-15);
+  const displayData = validData.slice(-15);
+  
+  // Debug: log the data
+  if (displayData.length === 0) {
+    console.warn('SalesChart: No data available', { validData, displayData });
+  }
 
   return (
     <div className="bg-white rounded-lg shadow p-4 md:p-6">
@@ -23,24 +31,31 @@ const SalesChart = ({ data }) => {
         <div className="space-y-4">
           {/* Chart */}
           <div className="h-64 flex items-end justify-around gap-1 md:gap-2 bg-gray-50 rounded-lg p-4">
-            {displayData.map((item, index) => (
-              <div
-                key={index}
-                className="flex-1 flex flex-col items-center group"
-              >
+            {displayData.length > 0 ? (
+              displayData.map((item, index) => (
                 <div
-                  className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t transition-all hover:from-blue-600 hover:to-blue-500 cursor-pointer relative"
-                  style={{
-                    height: `${Math.max(item.sales * scale, 5)}%`
-                  }}
-                  title={`${item.date}: ${formatCurrency(item.sales)}`}
+                  key={index}
+                  className="flex-1 flex flex-col items-center group"
                 >
-                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                    {formatCurrency(item.sales)}
+                  <div
+                    className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t transition-all hover:from-blue-600 hover:to-blue-500 cursor-pointer relative"
+                    style={{
+                      height: `${Math.max((item.sales * scale) || 5, 5)}%`,
+                      minHeight: '20px'
+                    }}
+                    title={`${item.date}: ${formatCurrency(item.sales)}`}
+                  >
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      {formatCurrency(item.sales)}
+                    </div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                No data available
               </div>
-            ))}
+            )}
           </div>
 
           {/* X-axis labels */}
